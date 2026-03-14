@@ -1,3 +1,5 @@
+mod thread_pool;
+use thread_pool::ThreadPool;
 use std::net::{TcpListener,TcpStream};
 use std::io::{Read,Write};
 
@@ -48,6 +50,7 @@ fn handle_connection(mut stream: TcpStream) {
 fn main() {
 
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    let pool = ThreadPool::new(4);
 
     println!("server is running in port 7878");
 
@@ -55,6 +58,8 @@ fn main() {
 
         let stream = stream.unwrap();
 
-        handle_connection(stream);
+        pool.execute(||{
+            handle_connection(stream);
+        });
     }
 }
