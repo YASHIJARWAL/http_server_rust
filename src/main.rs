@@ -3,7 +3,17 @@ use std::io::{Read,Write};
 fn handle_connection(mut stream: TcpStream){
     let mut buffer = [0;1024];
     stream.read(&mut buffer).unwrap();
-    let response = "HTTP/1.1 200 OK\r\n\r\nHello World";
+    let request =String::from_utf8_lossy(&buffer);
+    let response= if request.starts_with("GET /hello"){
+        "HTTP/1.1 200 OK\r\n\r\nHello from Rust server"
+    }
+    else if request.starts_with("GET /read"){
+        "HTTP/1.1 200 OK\r\n\r\nRead from Rust server"
+    }
+    else {
+        "HTTP/1.1 200 OK\r\n\r\nWelcome to the server" 
+    };
+
     stream.write(response.as_bytes()).unwrap();
     stream.flush().unwrap();
 
