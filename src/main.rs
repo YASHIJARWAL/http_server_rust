@@ -1,14 +1,15 @@
 mod thread_pool;
 mod http;
-mod router;
-mod handler;
+mod static_files;
+mod routes;
 use thread_pool::ThreadPool;
+use crate::static_files::file_server::serve_file;
 use std::net::{TcpListener,TcpStream};
 use std::io::{Read,Write};
 use std::sync::Arc;
 use http::request::Request;
-use crate::handler::{hello_handler, user_handler};
-use crate::router::Router;
+use crate::routes::handler::{hello_handler,user_handler};
+use crate::routes::router::Router;
 
 fn handle_connection(mut stream: TcpStream,router:Arc<Router>) {
 
@@ -23,7 +24,12 @@ fn handle_connection(mut stream: TcpStream,router:Arc<Router>) {
     let request_string = String::from_utf8_lossy(&buffer[..bytes_read]);
     let request = Request::parse(&request_string);
     println!("method:{} path:{} body:{}",request.method,request.path,request.body);
-    let response =router.handle(&request);
+    let mut response =router.handle(&request);
+     if response.status_code == 404 {
+        if let Some(file_response) = serve_file(&request.path) {
+            response = file_response;
+        }
+    }
     let response_string = response.to_http_string();
     stream.write_all(response_string.as_bytes()).unwrap();
 }
