@@ -1,12 +1,16 @@
 mod thread_pool;
 mod http;
+mod router;
+mod handler;
 use thread_pool::ThreadPool;
 use std::net::{TcpListener,TcpStream};
 use std::io::{Read,Write};
+use std::sync::Arc;
 use http::request::Request;
-use http::response::Response;
+use crate::handler::{hello_handler, user_handler};
+use crate::router::Router;
 
-fn handle_connection(mut stream: TcpStream) {
+fn handle_connection(mut stream: TcpStream,router:Arc<Router>) {
 
     println!("Connection received");
 
@@ -19,37 +23,26 @@ fn handle_connection(mut stream: TcpStream) {
     let request_string = String::from_utf8_lossy(&buffer[..bytes_read]);
     let request = Request::parse(&request_string);
     println!("method:{} path:{} body:{}",request.method,request.path,request.body);
-    let response =
-        if request.path=="/hello" {
-            Response::new(200).headers("content-type","text/plain").body("hello from RUST Server")
-
-        } 
-        else if request.path=="/users" {
-
-            Response::new(200).headers("content-type","application/json").body(r#"[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]"#)
-
-        } else {
-            Response::new(200).headers("content-type","text/plain").body("Welcome to RUST Server")
-
-        };
-
+    let response =router.handle(&request);
     let response_string = response.to_http_string();
-
     stream.write_all(response_string.as_bytes()).unwrap();
 }
 fn main() {
 
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let pool = ThreadPool::new(4);
-
     println!("server is running in port 7878");
-
+    let mut router = Router::new();
+    router.get("/hello",hello_handler);
+    router.get("/users",user_handler);
+    let router =Arc::new(router);
     for stream in listener.incoming(){
 
         let stream = stream.unwrap();
+        let router =Arc::clone(&router);
 
         pool.execute(||{
-            handle_connection(stream);
+            handle_connection(stream,router);
         });
     }
 }

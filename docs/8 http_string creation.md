@@ -13,7 +13,7 @@ This function converts the `Response` struct into a **valid HTTP/1.1 response me
 Until now, the `Response` struct only stored data:
 
 * Status code
-* Headers
+* https://github.com/YASHIJARWAL/http_server_rust/tree/mainHeaders
 * Body
 
 This step transforms that structured data into the **actual HTTP protocol format** required by browsers, `curl`, and other clients.
