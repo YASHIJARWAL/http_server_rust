@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 #[allow(dead_code)]
 pub struct Request {
@@ -6,8 +6,8 @@ pub struct Request {
     pub path: String,
     pub version: String,
     pub headers: HashMap<String,String>,
+    pub body:String,
 }
-
 impl Request {
 
     pub fn parse(request: &str) -> Request {
@@ -24,7 +24,7 @@ impl Request {
 
         let mut headers = HashMap::new();
 
-        for line in lines {
+        for line in &mut lines {
 
             if line.is_empty() {
                 break;
@@ -33,14 +33,14 @@ impl Request {
             if let Some((key, value)) = line.split_once(":") {
                 headers.insert(key.to_string(), value.to_string());
             }
-
         }
-
+        let body: String = lines.collect::<Vec<&str>>().join("\n");
         Request {
             method,
             path,
             version,
             headers,
+            body,
         }
     }
 }
