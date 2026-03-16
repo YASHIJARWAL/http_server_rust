@@ -20,7 +20,7 @@ impl Router {
             handler(request)
         }
         else{
-            Response::new(404).headers("Content-type", "text/plain").body("routes not found")
+            Response::new(404).headers("Content-type", "text/plain").body("routes not found".as_bytes())
         }
     }
 }

@@ -24,7 +24,7 @@ fn process_request(request: &Request,router:&Router)->Response{
                 not_found_page.status_code=404;
                 return not_found_page;
         }
-        return Response::new(404).headers("content-type", "text/html").body("404:not found");
+        return Response::new(404).headers("content-type", "text/html").body("404:not found".as_bytes());
     }
     response
             
@@ -47,12 +47,12 @@ fn handle_connection(mut stream: TcpStream,router:Arc<Router>) {
         &request.path,
         || {match std::panic::catch_unwind(||process_request(&request, &router)){
             Ok(resp)=>resp,
-            Err(_)=>Response::new(500).headers("content-type", "text/plain").body("500 Internal Server Error"),
+            Err(_)=>Response::new(500).headers("content-type", "text/plain").body("500 Internal Server Error".as_bytes()),
         }
     }
     );
-    let response_string = response.to_http_string();
-    stream.write_all(response_string.as_bytes()).unwrap();
+    let response_bytes = response.to_http_bytes();
+    stream.write_all(&response_bytes).unwrap();
 }
 fn main() {
 
