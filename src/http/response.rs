@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::{collections::HashMap,};
 
 pub struct Response{
     pub status_code:u16,
@@ -17,9 +17,21 @@ impl Response{
         self.body=body.to_string();
         self
     }
-    pub fn to_http_string(&self) -> String {
+    pub fn status_text(code: u16) -> &'static str {
+        match code {
+            200 => "OK",
+            404 => "Not Found",
+            500 => "Internal Server Error",
+            _ => "OK",
+        }
+    }
+    pub fn to_http_string(&self) -> String {let status_line = format!(
+    "HTTP/1.1 {} {}\r\n",
+    self.status_code,
+    Self::status_text(self.status_code)
+    );
 
-        let mut response = format!("HTTP/1.1 {} OK\r\n", self.status_code);
+        let mut response=status_line;
         for (key, value) in &self.headers {
             response.push_str(&format!("{}: {}\r\n", key, value));
         }

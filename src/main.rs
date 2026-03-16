@@ -4,6 +4,7 @@ mod static_files;
 mod routes;
 mod middleware;
 use thread_pool::ThreadPool;
+use crate::http::response::Response;
 use crate::middleware::logger;
 use crate::static_files::file_server::serve_file;
 use std::net::{TcpListener,TcpStream};
@@ -13,6 +14,21 @@ use http::request::Request;
 use crate::routes::handler::{hello_handler,user_handler};
 use crate::routes::router::Router;
 
+fn process_request(request: &Request,router:&Router)->Response{
+    let response = router.handle(&request);
+    if response.status_code == 404 {
+        if let Some(file_response) = serve_file(&request.path) {
+            return file_response;
+        }
+        if let Some(mut not_found_page)=serve_file("/error404.html"){
+                not_found_page.status_code=404;
+                return not_found_page;
+        }
+        return Response::new(404).headers("content-type", "text/html").body("404:not found");
+    }
+    response
+            
+}
 fn handle_connection(mut stream: TcpStream,router:Arc<Router>) {
 
     println!("Connection received");
@@ -29,20 +45,11 @@ fn handle_connection(mut stream: TcpStream,router:Arc<Router>) {
      let response = logger::log_request(
         &request.method,
         &request.path,
-        || {
-            let mut response = router.handle(&request);
-            if response.status_code == 404 {
-                if let Some(file_response) = serve_file(&request.path) {
-                    response = file_response;
-                }
-                else{
-                    if let Some(not_found_page)=serve_file("/error404.html"){
-                        response=not_found_page;
-                    }
-                }
-            }
-            response
+        || {match std::panic::catch_unwind(||process_request(&request, &router)){
+            Ok(resp)=>resp,
+            Err(_)=>Response::new(500).headers("content-type", "text/plain").body("500 Internal Server Error"),
         }
+    }
     );
     let response_string = response.to_http_string();
     stream.write_all(response_string.as_bytes()).unwrap();
