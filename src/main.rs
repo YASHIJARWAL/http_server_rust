@@ -4,14 +4,14 @@ mod static_files;
 mod routes;
 mod middleware;
 use thread_pool::ThreadPool;
-use crate::http::response::Response;
-use crate::middleware::logger;
+use crate::http::response::{ Response};
+use crate::middleware::{CORS, Logger, Recovery};
 use crate::static_files::file_server::serve_file;
 use std::net::{TcpListener,TcpStream};
 use std::io::{Read,Write};
 use std::sync::Arc;
 use http::request::Request;
-use crate::routes::handler::{hello_handler,user_handler};
+use crate::routes::handler::{create_user_handler, hello_handler, user_handler};
 use crate::routes::router::Router;
 
 fn process_request(request: &Request,router:&Router)->Response{
@@ -42,15 +42,7 @@ fn handle_connection(mut stream: TcpStream,router:Arc<Router>) {
     let request_string = String::from_utf8_lossy(&buffer[..bytes_read]);
     let request = Request::parse(&request_string);
     println!("method:{} path:{} body:{}",request.method,request.path,request.body);
-     let response = logger::log_request(
-        &request.method,
-        &request.path,
-        || {match std::panic::catch_unwind(||process_request(&request, &router)){
-            Ok(resp)=>resp,
-            Err(_)=>Response::new(500).headers("content-type", "text/plain").body("500 Internal Server Error".as_bytes()),
-        }
-    }
-    );
+    let response = process_request(&request,&router);
     let response_bytes = response.to_http_bytes();
     stream.write_all(&response_bytes).unwrap();
 }
@@ -62,6 +54,10 @@ fn main() {
     let mut router = Router::new();
     router.get("/hello",hello_handler);
     router.get("/users",user_handler);
+    router.post("/users", create_user_handler);
+    router.use_middleware(Recovery);
+    router.use_middleware(Logger);
+    router.use_middleware(CORS);
     let router =Arc::new(router);
     for stream in listener.incoming(){
 
